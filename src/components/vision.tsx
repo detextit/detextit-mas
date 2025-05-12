@@ -32,11 +32,9 @@ export default function Vision() {
           </h2>
           <p className="text-xl text-white/70 max-w-3xl mx-auto">
             We are building the future of intelligent systems. Our roadmap
-            starts with pioneering multi-agent solutions for advanced{" "}
+            starts with pioneering agent solutions for advanced{" "}
             <strong>simulation</strong>, dynamic <strong>benchmarking</strong>,
-            and robust <strong>planning</strong>. We then progress to systems
-            that not only perform tasks but actively{" "}
-            <strong>improve and evolve</strong>. Our ultimate aim is to create
+            and robust <strong>planning</strong>. Our ultimate aim is to create
             sophisticated <strong>organizations of collaborative agents</strong>
             , driving innovation across industries and even creating new forms
             of <strong>entertainment</strong>.

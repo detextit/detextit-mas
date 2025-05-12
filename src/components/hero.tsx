@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import ThreeScene from "@/components/three-scene";
 import { motion } from "framer-motion";
-import { ArrowDown, Sparkles } from "lucide-react";
+import { ArrowDown, Sparkles, Mouse } from "lucide-react";
 import { SignUpButton } from "@clerk/nextjs";
 
 export default function Hero() {
@@ -97,11 +97,8 @@ export default function Hero() {
       >
         <Link href="#emergent-tools">
           <div className="flex flex-col items-center cursor-pointer hover:opacity-80 transition-opacity">
-            <p className="text-white/60 text-sm mb-2">
-              Discover emergent tools
-            </p>
             <div className="animate-bounce">
-              <ArrowDown className="w-6 h-6 text-white/60" />
+              <Mouse className="w-8 h-8 text-white/60" />
             </div>
           </div>
         </Link>
