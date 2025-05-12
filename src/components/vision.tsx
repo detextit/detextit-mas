@@ -31,8 +31,15 @@ export default function Vision() {
             </span>
           </h2>
           <p className="text-xl text-white/70 max-w-3xl mx-auto">
-            Creating intelligent multi-agent systems with collective memory,
-            personal goals, and robust communication
+            We are building the future of intelligent systems. Our roadmap
+            starts with pioneering multi-agent solutions for advanced{" "}
+            <strong>simulation</strong>, dynamic <strong>benchmarking</strong>,
+            and robust <strong>planning</strong>. We then progress to systems
+            that not only perform tasks but actively{" "}
+            <strong>improve and evolve</strong>. Our ultimate aim is to create
+            sophisticated <strong>organizations of collaborative agents</strong>
+            , driving innovation across industries and even creating new forms
+            of <strong>entertainment</strong>.
           </p>
         </motion.div>
 

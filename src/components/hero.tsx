@@ -3,9 +3,9 @@
 import { useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import ThreeScene from "./three-scene";
+import ThreeScene from "@/components/three-scene";
 import { motion } from "framer-motion";
-import { ArrowDown, Network, Sparkles } from "lucide-react";
+import { ArrowDown, Sparkles } from "lucide-react";
 import { SignUpButton } from "@clerk/nextjs";
 
 export default function Hero() {
@@ -48,7 +48,7 @@ export default function Hero() {
         >
           <div className="inline-flex items-center px-4 py-2 rounded-full bg-white/5 backdrop-blur-sm border border-white/10 text-purple-300 mb-6">
             <Sparkles className="w-4 h-4 mr-2" />
-            <span>Revolutionary AI Systems</span>
+            <span>Stateful, Long Living Agentic Systems</span>
           </div>
         </motion.div>
 
@@ -58,9 +58,9 @@ export default function Hero() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.4 }}
         >
-          <span className="block">Agents That</span>
+          <span className="block">Evolving Intelligence:</span>
           <span className="bg-gradient-to-r from-purple-400 via-cyan-400 to-purple-400 text-transparent bg-clip-text">
-            Discover Tools on Their Own
+            AI that learns, adapts, and collaborates.
           </span>
         </motion.h1>
 
@@ -70,8 +70,8 @@ export default function Hero() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.6 }}
         >
-          Our multi-agent systems autonomously discover, learn, and utilize
-          tools to solve complex problems without explicit programming.
+          Explore the future with AI to simulate complex scenarios and unlock
+          new possibilities in entertainment, education, and more.
         </motion.p>
 
         <motion.div
@@ -82,7 +82,7 @@ export default function Hero() {
         >
           <SignUpButton mode="modal">
             <Button className="bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-700 hover:to-cyan-700 text-white px-8 py-6 text-lg rounded-full">
-              Experience It Now
+              Sign up for updates
             </Button>
           </SignUpButton>
         </motion.div>

@@ -11,6 +11,11 @@ import {
   Shield,
   Users,
   AlertTriangle,
+  BarChart2,
+  TrendingUp,
+  Cpu,
+  Network,
+  PlayCircle,
 } from "lucide-react";
 
 export default function Features() {
@@ -21,45 +26,45 @@ export default function Features() {
 
   const features = [
     {
-      icon: <Database className="w-10 h-10" />,
-      title: "Collective Memory Systems",
+      icon: <Users className="w-10 h-10" />,
+      title: "Advanced Simulation Environments",
       description:
-        "Building shared knowledge repositories that enable multi-agent systems to collaborate with context awareness and maintain consistent understanding over time.",
+        "Create rich, dynamic simulations powered by multi-agent systems to model complex scenarios and predict outcomes with greater accuracy.",
       gradient: "from-purple-500 to-blue-500",
     },
     {
-      icon: <Brain className="w-10 h-10" />,
-      title: "Agent-Centric Goals",
+      icon: <TrendingUp className="w-10 h-10" />,
+      title: "Self-Improving Evaluation (Dynamic Benchmarking)",
       description:
-        "Moving beyond purely task-focused agents to create systems with personal objectives, preferences, and identities that drive more realistic and nuanced behaviors.",
+        "Go beyond static benchmarks. Our systems enable evaluators that grow, adapt, and continuously refine their ability to assess agent performance.",
       gradient: "from-blue-500 to-cyan-500",
     },
     {
-      icon: <MessageSquare className="w-10 h-10" />,
-      title: "Advanced Communication",
+      icon: <Brain className="w-10 h-10" />,
+      title: "Intelligent Planning & Strategy",
       description:
-        "Developing sophisticated protocols that enable agents to exchange complex ideas, negotiate effectively, and coordinate actions with minimal overhead.",
+        "Empower agents with sophisticated planning capabilities to tackle complex goals, optimize resource allocation, and devise novel strategies.",
       gradient: "from-cyan-500 to-emerald-500",
     },
     {
-      icon: <Shield className="w-10 h-10" />,
-      title: "Error Recovery",
+      icon: <Cpu className="w-10 h-10" />,
+      title: "Evolving Agent Architectures",
       description:
-        "Implementing robust mechanisms for detecting failures, understanding system limitations, and gracefully recovering from unexpected scenarios.",
+        "Develop agents that not only learn from data but can adapt their own architectures and capabilities over time, leading to truly autonomous growth.",
       gradient: "from-emerald-500 to-yellow-500",
     },
     {
-      icon: <Users className="w-10 h-10" />,
-      title: "Subtle Dynamics",
+      icon: <Network className="w-10 h-10" />,
+      title: "Collaborative Intelligence & Emergence",
       description:
-        "Capturing the nuanced relationship patterns between agents, including emergent social hierarchies, cooperation strategies, and adaptive behaviors.",
+        "Foster true collaboration between agents through shared knowledge and advanced communication, leading to emergent solutions for complex problems.",
       gradient: "from-yellow-500 to-orange-500",
     },
     {
-      icon: <AlertTriangle className="w-10 h-10" />,
-      title: "Cost & Scale Optimization",
+      icon: <PlayCircle className="w-10 h-10" />,
+      title: "Interactive Agent Entertainment",
       description:
-        "Addressing the computational and resource challenges of multi-agent systems to make them more efficient, affordable, and scalable for real-world applications.",
+        "Unlock new forms of entertainment by creating observable and interactive scenarios where autonomous agents play out compelling narratives and behaviors.",
       gradient: "from-orange-500 to-purple-500",
     },
   ];
@@ -78,11 +83,11 @@ export default function Features() {
           className="text-center mb-16"
         >
           <h2 className="text-3xl md:text-5xl font-bold text-white mb-6">
-            Solving Key Challenges
+            Key Capabilities & Applications
           </h2>
           <p className="text-xl text-white/70 max-w-3xl mx-auto">
-            Addressing the most significant obstacles in multi-agent systems to
-            unlock their full potential
+            Discover how our multi-agent systems are pushing the boundaries of
+            AI, from advanced simulations to evolving intelligence.
           </p>
         </motion.div>
 

@@ -60,21 +60,13 @@ export default function Header() {
           <SignedOut>
             <SignUpButton mode="modal">
               <Button className="bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-700 hover:to-cyan-700 text-white">
-                Sign Up / Sign In
+                Sign In
               </Button>
             </SignUpButton>
           </SignedOut>
 
           <SignedIn>
-            <Link
-              href="/dashboard"
-              className="text-white/80 hover:text-white transition-colors relative group"
-            >
-              Dashboard
-              <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-purple-400 to-cyan-400 transition-all duration-300 group-hover:w-full"></span>
-            </Link>
             <UserButton
-              afterSignOutUrl="/"
               appearance={{
                 elements: {
                   userButtonAvatarBox: "h-10 w-10",

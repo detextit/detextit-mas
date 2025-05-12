@@ -6,9 +6,9 @@ import { Github, Twitter, Linkedin, Sparkles } from "lucide-react";
 
 export default function Footer() {
   return (
-    <footer className="bg-gradient-to-b from-black to-purple-950/30 border-t border-white/10 py-16">
+    <footer className="bg-black py-16">
       <div className="container mx-auto px-4">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
+        {/* <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
           <div className="md:col-span-2">
             <Link href="/" className="flex items-center space-x-2 mb-6">
               <div className="relative flex items-center">
@@ -79,7 +79,7 @@ export default function Footer() {
               </li>
             </ul>
           </div>
-        </div>
+        </div> */}
 
         <div className="border-t border-white/10 mt-12 pt-8 flex flex-col md:flex-row justify-between items-center">
           <p className="text-white/60 text-sm">
