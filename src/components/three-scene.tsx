@@ -262,13 +262,14 @@ export default function ThreeScene() {
     animate(0);
 
     // Cleanup
+    const container = containerRef.current;
     return () => {
       window.removeEventListener("resize", debouncedResize);
       if (
-        containerRef.current &&
-        containerRef.current.contains(renderer.domElement)
+        container &&
+        container.contains(renderer.domElement)
       ) {
-        containerRef.current.removeChild(renderer.domElement);
+        container.removeChild(renderer.domElement);
       }
 
       // Dispose of geometries and materials
