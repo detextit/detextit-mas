@@ -48,7 +48,7 @@ export default function Home() {
             faces several significant roadblocks. Current agents are often
             primarily task-oriented and struggle to capture subtle social
             dynamics, build trust, engage in nuanced negotiation, or develop
-            consistent "personalities" within long-living environments. These
+            consistent &quot;personalities&quot; within long-living environments. These
             are crucial aspects for creating truly autonomous and collaborative
             entities.
           </p>

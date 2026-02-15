@@ -56,6 +56,13 @@ export default function Header() {
               <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-purple-400 to-cyan-400 transition-all duration-300 group-hover:w-full"></span>
             </Link>
           ))}
+          <Link
+            href="/lobby"
+            className="text-white/80 hover:text-white transition-colors relative group font-semibold"
+          >
+            Play Arena
+            <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-purple-400 to-cyan-400 transition-all duration-300 group-hover:w-full"></span>
+          </Link>
 
           <SignedOut>
             <SignUpButton mode="modal">
@@ -117,6 +124,13 @@ export default function Header() {
             </SignedOut>
 
             <SignedIn>
+              <Link
+                href="/lobby"
+                className="text-white/80 hover:text-white transition-colors py-2 border-b border-white/10 font-semibold"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                Play Arena
+              </Link>
               <Link
                 href="/dashboard"
                 className="text-white/80 hover:text-white transition-colors py-2"
