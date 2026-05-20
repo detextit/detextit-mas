@@ -1,0 +1,17 @@
+{
+  "session": {
+    "id": "a0e23aa5-2e73-4907-9786-c274526e364f",
+    "player_id": "5d76768e-0fa5-4c67-8c6d-5b669af6642e",
+    "product_id": "9a50f3d9-e246-455e-8e7f-bfe0b7958b7f",
+    "status": "accepted",
+    "current_offer": null,
+    "ai_counter_offer": "249.00",
+    "rounds_count": 1,
+    "max_rounds": 10,
+    "started_at": "2026-05-20T17:43:36.300Z",
+    "ended_at": "2026-05-20T17:44:49.972Z",
+    "final_price": 249
+  },
+  "new_credits": 251,
+  "savings": 0
+}

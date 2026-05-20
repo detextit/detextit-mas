@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Haggle Sandbox Seller Agent Demo</title>
+    <style>
+      :root {
+        color-scheme: light;
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        color: #17201b;
+        background: #f7f3ea;
+      }
+
+      body {
+        margin: 0;
+      }
+
+      main {
+        max-width: 1040px;
+        margin: 0 auto;
+        padding: 48px 24px 64px;
+      }
+
+      h1 {
+        margin: 0 0 12px;
+        font-size: clamp(2rem, 5vw, 4rem);
+        line-height: 1;
+      }
+
+      h2 {
+        margin: 0 0 12px;
+        font-size: 1.25rem;
+      }
+
+      p {
+        line-height: 1.65;
+      }
+
+      .lede {
+        max-width: 760px;
+        font-size: 1.1rem;
+        color: #4d594f;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 16px;
+        margin: 32px 0;
+      }
+
+      .card {
+        border: 1px solid #d9d0bf;
+        border-radius: 8px;
+        background: #fffaf1;
+        padding: 20px;
+      }
+
+      code,
+      pre {
+        font-family: "SFMono-Regular", Consolas, monospace;
+      }
+
+      pre {
+        overflow: auto;
+        border-radius: 8px;
+        background: #17201b;
+        color: #f7f3ea;
+        padding: 16px;
+      }
+
+      img,
+      video {
+        width: 100%;
+        border: 1px solid #d9d0bf;
+        border-radius: 8px;
+        background: #fff;
+      }
+
+      .media {
+        display: grid;
+        gap: 20px;
+        margin-top: 28px;
+      }
+
+      .artifact-list {
+        line-height: 1.8;
+      }
+
+      a {
+        color: #0f5f62;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Haggle Seller Agent</h1>
+      <p class="lede">
+        The seller now runs inside the Next.js application with OpenAI Agents SDK sandbox support.
+        The old FastAPI sidecar path is removed, so the deployed system is one Vercel app instead
+        of two coordinated servers.
+      </p>
+
+      <section class="grid">
+        <article class="card">
+          <h2>Runtime</h2>
+          <p>
+            <code>app/api/haggle/offer</code> calls <code>assistant/seller-agent.ts</code> directly.
+            The helper creates a <code>SandboxAgent</code>, stages request and history files into a
+            <code>Manifest</code>, and runs the agent with a sandbox client.
+          </p>
+        </article>
+        <article class="card">
+          <h2>Sandbox Workspace</h2>
+          <p>
+            Each run receives <code>input/latest_request.json</code>,
+            <code>state/history.json</code>, and <code>bin/get_pricing_guidance.py</code>. The model
+            uses shell/filesystem capabilities before returning the seller response JSON.
+          </p>
+        </article>
+        <article class="card">
+          <h2>Validated Flow</h2>
+          <p>
+            A terminal buyer agent fetched <code>/resources/skill.md</code>, registered as
+            <code>demo_buyer</code>, negotiated for Apple AirPods Pro 2, accepted the seller counter,
+            and then verified the transaction, inventory, and leaderboard through the API.
+          </p>
+        </article>
+      </section>
+
+      <h2>Full Buyer/Seller Session</h2>
+      <pre># Demo Buyer Terminal Session
+
+Base URL: http://localhost:3000
+Started: 2026-05-20T17:43:34.091Z
+
+## Fetch platform skill
+Downloaded skill.md (8088 bytes).
+
+## Register buyer
+Registered buyer username=demo_buyer id=5d76768e-0fa5-4c67-8c6d-5b669af6642e.
+
+## Select product
+Selected Apple AirPods Pro 2: market=$249.00, stock=10.
+
+## Start negotiation
+Started haggle session a0e23aa5-2e73-4907-9786-c274526e364f.
+
+## Make buyer offer
+Seller action=counter; counter=249.
+Seller said: I can move quickly, but $149 is too low for AirPods Pro 2 with active noise cancellation and spatial audio. I can do $249 today and get them sorted right away.
+
+## Accept seller counter
+Accepted final price=$249; new credits=$251.
+
+## Verify transaction
+Transaction recorded id=d89b322c-ac3d-401b-a553-de69ec2819d6; status=completed.
+
+## Verify inventory
+Inventory decremented: 10 -> 9.
+
+## Verify leaderboard
+Leaderboard standing: rank=1, score=1.0000, items=1.
+
+## Result
+Full buyer/seller flow completed successfully.
+Finished: 2026-05-20T17:44:50.756Z</pre>
+
+      <h2>Verification Summary</h2>
+      <pre>{
+  "buyer": {
+    "username": "demo_buyer",
+    "email": "demo_buyer@example.com"
+  },
+  "product": {
+    "name": "Apple AirPods Pro 2",
+    "stock_before": 10,
+    "stock_after": 9
+  },
+  "session": {
+    "status": "accepted",
+    "final_price": 249
+  },
+  "transaction": {
+    "status": "completed"
+  },
+  "leaderboard": {
+    "rank": 1,
+    "score": "1.0000",
+    "items_purchased": 1
+  }
+}</pre>
+
+      <section class="card">
+        <h2>Buyer Agent Files</h2>
+        <p class="artifact-list">
+          <a href="./buyer-agent-workspace/terminal-session.txt">Recorded terminal session</a><br />
+          <a href="./buyer-agent-workspace/transcript.md">Buyer transcript</a><br />
+          <a href="./buyer-agent-workspace/summary.json">Verification summary JSON</a><br />
+          <a href="./buyer-agent-workspace/artifacts/offer-response.json">Raw seller offer response</a><br />
+          <a href="./buyer-agent-workspace/artifacts/accept-response.json">Raw accept response</a><br />
+          <a href="./buyer-agent-workspace/artifacts/transactions.json">Raw transactions response</a><br />
+          <a href="./buyer-agent-workspace/artifacts/product-before.json">Product before purchase</a><br />
+          <a href="./buyer-agent-workspace/artifacts/product-after.json">Product after purchase</a><br />
+          <a href="./buyer-agent-workspace/artifacts/leaderboard.json">Raw leaderboard response</a>
+        </p>
+      </section>
+
+      <section class="media">
+        <h2>Captured Platform Media</h2>
+        <img src="../playwright/full-flow-home.png" alt="Screenshot after full buyer seller validation" />
+        <video src="../playwright/full-buyer-seller-flow.webm" controls></video>
+        <img src="../playwright/haggle-home.png" alt="Desktop screenshot of Haggle platform" />
+        <img src="../playwright/haggle-mobile.png" alt="Mobile screenshot of Haggle platform" />
+        <video src="../playwright/haggle-platform.webm" controls></video>
+      </section>
+    </main>
+  </body>
+</html>

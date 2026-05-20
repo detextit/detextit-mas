@@ -3,8 +3,6 @@ import sql from '@/lib/db'
 import { ApiResponse, HaggleSession } from '@/lib/types'
 import { getAuthContext, forbidden, unauthorized } from '@/lib/auth-helpers'
 
-const AGENT_URL = process.env.AGENT_URL || 'http://localhost:8000'
-
 // POST /api/haggle/abandon - Abandon a haggle session
 export async function POST(request: NextRequest) {
   try {
@@ -59,8 +57,6 @@ export async function POST(request: NextRequest) {
       INSERT INTO haggle_messages (session_id, sender, message)
       VALUES (${session_id}, 'player', 'I''ve decided to walk away from this deal.')
     `
-
-    fetch(`${AGENT_URL}/end-session`, { method: 'POST' }).catch(() => {})
 
     return NextResponse.json<ApiResponse<HaggleSession>>({
       success: true,

@@ -3,8 +3,6 @@ import sql from '@/lib/db'
 import { ApiResponse, HaggleSession } from '@/lib/types'
 import { getAuthContext, forbidden, unauthorized } from '@/lib/auth-helpers'
 
-const AGENT_URL = process.env.AGENT_URL || 'http://localhost:8000'
-
 export async function POST(request: NextRequest) {
   try {
     const auth = await getAuthContext(request)
@@ -109,8 +107,6 @@ export async function POST(request: NextRequest) {
       final_price: acceptedPrice,
       ended_at: new Date().toISOString(),
     }
-
-    fetch(`${AGENT_URL}/end-session`, { method: 'POST' }).catch(() => {})
 
     return NextResponse.json<ApiResponse<{
       session: HaggleSession

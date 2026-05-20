@@ -2,8 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import sql from '@/lib/db'
 import { HaggleSession, MakeOfferInput, ApiResponse, Product, SellerNegotiationResponse } from '@/lib/types'
 import { getAuthContext, forbidden, unauthorized } from '@/lib/auth-helpers'
+import { runSellerNegotiation, SellerMessageHistoryItem } from '@/assistant/seller-agent'
 
-const AGENT_URL = process.env.AGENT_URL || 'http://localhost:8000'
+export const runtime = 'nodejs'
+export const maxDuration = 300
 
 export async function POST(request: NextRequest) {
   try {
@@ -75,6 +77,7 @@ export async function POST(request: NextRequest) {
       playerId: session.player_id,
       product,
       buyerMessage: message,
+      roundCount: newRoundsCount,
     })
 
     if (!sellerResponse) {
@@ -141,7 +144,6 @@ export async function POST(request: NextRequest) {
         ended_at: new Date().toISOString(),
         ai_counter_offer: acceptedPrice,
       }
-      endAgentSession()
     } else if (sellerResponse.action === 'reject' || newRoundsCount >= Number(session.max_rounds)) {
       const result = await sql`
         UPDATE haggle_sessions
@@ -151,7 +153,6 @@ export async function POST(request: NextRequest) {
         RETURNING *
       `
       updatedSession = result[0] as HaggleSession
-      endAgentSession()
     } else {
       const result = await sql`
         UPDATE haggle_sessions
@@ -188,53 +189,39 @@ async function getSellerNegotiationResponse({
   playerId,
   product,
   buyerMessage,
+  roundCount,
 }: {
   sessionId: string
   playerId: string
   product: Product
   buyerMessage: string
+  roundCount: number
 }): Promise<SellerNegotiationResponse | null> {
   try {
-    const agentResponse = await fetch(`${AGENT_URL}/negotiate`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        session_id: sessionId,
-        player_id: playerId,
-        product: {
-          name: product.name,
-          description: product.description,
-          market_price: Number(product.market_price),
-          min_acceptable_price: Number(product.min_acceptable_price),
-          category: product.category,
-          stock_quantity: product.stock_quantity,
-        },
-        buyer_message: buyerMessage,
-      }),
-      signal: AbortSignal.timeout(120000),
+    const history = await sql<SellerMessageHistoryItem[]>`
+      SELECT sender, message, offer_amount, created_at
+      FROM haggle_messages
+      WHERE session_id = ${sessionId}
+      ORDER BY created_at ASC
+    `
+
+    const data = await runSellerNegotiation({
+      sessionId,
+      playerId,
+      product,
+      buyerMessage,
+      roundCount,
+      history,
     })
 
-    if (agentResponse.ok) {
-      const data = await agentResponse.json()
-      return {
-        action: data.action as 'accept' | 'counter' | 'reject',
-        counter_offer: data.counter_offer ?? undefined,
-        message: data.seller_message,
-      }
+    return {
+      action: data.action,
+      counter_offer: data.counter_offer,
+      message: data.message,
     }
-
-    console.error('Agent returned non-OK:', agentResponse.status)
   } catch (error) {
-    console.error('Agent unreachable:', error)
+    console.error('Seller agent failed:', error)
   }
 
   return null
-}
-
-async function endAgentSession(): Promise<void> {
-  try {
-    await fetch(`${AGENT_URL}/end-session`, { method: 'POST' })
-  } catch (error) {
-    console.error('Failed to end agent session:', error)
-  }
 }
