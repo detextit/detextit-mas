@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect, useCallback } from 'react'
+import Image from 'next/image'
 import { Send } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -431,11 +432,13 @@ export function HaggleChat({ product, onClose, onPurchaseComplete }: HaggleChatP
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             {product.image_url ? (
-              <div className="size-10 rounded-full overflow-hidden border border-white/20 bg-white/10 flex-shrink-0 flex items-center justify-center">
-                <img
+              <div className="relative size-10 rounded-full overflow-hidden border border-white/20 bg-white/10 flex-shrink-0 flex items-center justify-center">
+                <Image
                   src={product.image_url}
                   alt={product.name}
-                  className="w-full h-full object-cover"
+                  fill
+                  sizes="40px"
+                  className="object-cover"
                 />
               </div>
             ) : null}

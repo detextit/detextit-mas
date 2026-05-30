@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useAuth } from "@clerk/nextjs"
+import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { Search, Gamepad2, ShoppingBag, MessageSquare, X, SlidersHorizontal } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -96,10 +97,12 @@ function ProductCard({
           <div className="relative mb-3 overflow-hidden rounded-md bg-secondary/40 dark:bg-secondary/10 border border-border/30">
             <div className="w-full h-40 flex items-center justify-center overflow-hidden">
               {product.image_url ? (
-                <img
+                <Image
                   src={product.image_url}
                   alt={product.name}
-                  className="w-full h-full object-cover transition-transform duration-500 ease-out group-hover:scale-105"
+                  fill
+                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
+                  className="object-cover transition-transform duration-500 ease-out group-hover:scale-105"
                   onError={(e) => {
                     // Fail-safe client fallback to emoticon
                     e.currentTarget.style.display = "none"

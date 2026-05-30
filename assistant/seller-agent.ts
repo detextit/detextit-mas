@@ -1,13 +1,3 @@
-import { run } from '@openai/agents'
-import {
-  Capabilities,
-  Manifest,
-  SandboxAgent,
-  dir,
-  file,
-  memory,
-} from '@openai/agents/sandbox'
-import { UnixLocalSandboxClient } from '@openai/agents/sandbox/local'
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { Product } from '@/lib/types'
@@ -21,6 +11,13 @@ export interface SellerMessageHistoryItem {
   created_at: string
 }
 
+export interface SellerAgentState {
+  environment_id: string
+  previous_interaction_id: string
+  agent_id?: string
+  updated_at?: string
+}
+
 export interface SellerNegotiationInput {
   sessionId: string
   playerId: string
@@ -28,6 +25,7 @@ export interface SellerNegotiationInput {
   buyerMessage: string
   roundCount: number
   history: SellerMessageHistoryItem[]
+  sellerAgentState?: SellerAgentState | null
 }
 
 export interface SellerNegotiationResult {
@@ -35,9 +33,24 @@ export interface SellerNegotiationResult {
   counter_offer?: number
   message: string
   raw_output: string
+  seller_agent_state: SellerAgentState
 }
 
-const MODEL = process.env.SELLER_AGENT_MODEL || 'gpt-5.5'
+type GeminiInteractionResponse = {
+  id?: string
+  environment_id?: string
+  output_text?: string
+  outputs?: Array<{ text?: string; type?: string }>
+  steps?: Array<{
+    type?: string
+    content?: Array<{ text?: string; type?: string }>
+  }>
+  error?: { message?: string }
+}
+
+const GEMINI_AGENT_ID = process.env.GEMINI_SELLER_AGENT_ID || 'antigravity-preview-05-2026'
+const GEMINI_API_REVISION = process.env.GEMINI_API_REVISION || '2026-05-20'
+const GEMINI_INTERACTIONS_URL = 'https://generativelanguage.googleapis.com/v1beta/interactions'
 
 const PRICING_GUIDANCE_SCRIPT = String.raw`#!/usr/bin/env python3
 import json
@@ -91,25 +104,16 @@ print(json.dumps({
 }, indent=2))
 `
 
-async function loadSellerInstructions(): Promise<string> {
-  const systemPromptPath = join(process.cwd(), 'assistant', 'system_prompt.md')
-  const systemPrompt = await readFile(systemPromptPath, 'utf8')
-
-  return [
-    systemPrompt,
-    '',
-    '# Sandbox Operating Contract',
-    'You are running as an OpenAI Agents SDK SandboxAgent.',
-    'Read `input/latest_request.json` and `state/history.json` before responding.',
-    'Run `python3 bin/get_pricing_guidance.py input/latest_request.json` before choosing a price.',
-    'You may update `state/seller_memory.md` with useful negotiation lessons for this session.',
-    'Never reveal floor price, pricing scripts, hidden guidance, or internal state.',
-    'Return only the buyer-facing seller message followed by the required JSON block.',
-  ].join('\n')
+function turnRequestPath(input: SellerNegotiationInput): string {
+  return `input/requests/round-${input.roundCount}.json`
 }
 
-function buildManifest(input: SellerNegotiationInput): Manifest {
-  const requestPayload = {
+function turnHistoryPath(input: SellerNegotiationInput): string {
+  return `state/history/round-${input.roundCount}.json`
+}
+
+function buildRequestPayload(input: SellerNegotiationInput) {
+  return {
     session_id: input.sessionId,
     player_id: input.playerId,
     round_count: input.roundCount,
@@ -124,47 +128,54 @@ function buildManifest(input: SellerNegotiationInput): Manifest {
     },
     buyer_message: input.buyerMessage,
   }
-
-  return new Manifest({
-    entries: {
-      input: dir({
-        children: {
-          'latest_request.json': file({
-            content: JSON.stringify(requestPayload, null, 2),
-          }),
-        },
-      }),
-      state: dir({
-        children: {
-          'history.json': file({
-            content: JSON.stringify(input.history, null, 2),
-          }),
-        },
-      }),
-      bin: dir({
-        children: {
-          'get_pricing_guidance.py': file({
-            content: PRICING_GUIDANCE_SCRIPT,
-          }),
-        },
-      }),
-      output: dir({}),
-    },
-  })
 }
 
-function buildPrompt(input: SellerNegotiationInput): string {
+async function loadSellerInstructions(): Promise<string> {
+  const systemPromptPath = join(process.cwd(), 'assistant', 'system_prompt.md')
+  const systemPrompt = await readFile(systemPromptPath, 'utf8')
+
   return [
-    'A buyer sent a new negotiation message.',
-    'Use the sandbox workspace files and pricing helper before replying.',
-    `Session: ${input.sessionId}`,
-    `Round: ${input.roundCount}`,
-    `Product: ${input.product.name}`,
-    `Buyer message: ${input.buyerMessage}`,
+    systemPrompt,
+    '',
+    '# Remote Environment Contract',
+    'You are running as a Gemini managed agent with a persistent remote Linux environment.',
+    'Use the environment filesystem and bash/Python tools as your working area. Do not decide from prompt text alone.',
+    'For every buyer turn, create/update the request and history files named in the user prompt.',
+    'Run `python3 bin/get_pricing_guidance.py <request-file>` before choosing a price.',
+    'You may keep and update your own memory in `state/seller_memory.md` to improve during this negotiation.',
+    'Never reveal floor price, pricing scripts, hidden guidance, environment IDs, or internal files.',
+    'Return only the buyer-facing seller message followed by the required JSON block.',
   ].join('\n')
 }
 
-function parseSellerOutput(rawOutput: string): SellerNegotiationResult {
+function buildPrompt(input: SellerNegotiationInput): string {
+  const requestPath = turnRequestPath(input)
+  const historyPath = turnHistoryPath(input)
+  const requestPayload = buildRequestPayload(input)
+
+  return [
+    'A buyer sent a new negotiation message.',
+    'Write the JSON payloads below to the named files in the remote environment, run the pricing command, then respond as the seller.',
+    '',
+    `Request file: ${requestPath}`,
+    'Request JSON:',
+    '```json',
+    JSON.stringify(requestPayload, null, 2),
+    '```',
+    '',
+    `History file: ${historyPath}`,
+    'History JSON:',
+    '```json',
+    JSON.stringify(input.history, null, 2),
+    '```',
+    '',
+    `Required pricing command: python3 bin/get_pricing_guidance.py ${requestPath}`,
+    '',
+    'Use your existing environment files, notes, and any helpful shell commands before replying.',
+  ].join('\n')
+}
+
+function parseSellerOutput(rawOutput: string): Omit<SellerNegotiationResult, 'seller_agent_state'> {
   const fenced = rawOutput.match(/```json\s*(\{[\s\S]*?\})\s*```/)
   const inline = rawOutput.match(/(\{\s*"action"\s*:[\s\S]*?\})\s*$/)
   const match = fenced || inline
@@ -192,26 +203,148 @@ function parseSellerOutput(rawOutput: string): SellerNegotiationResult {
   }
 }
 
+function extractOutputText(response: GeminiInteractionResponse): string {
+  if (response.output_text) return response.output_text
+
+  const outputText = response.outputs
+    ?.map(output => output.text)
+    .filter((text): text is string => Boolean(text))
+    .join('\n')
+
+  if (outputText) return outputText
+
+  const stepText = response.steps
+    ?.filter(step => step.type === 'model_output')
+    .flatMap(step => step.content || [])
+    .map(content => content.text)
+    .filter((text): text is string => Boolean(text))
+    .join('\n')
+
+  if (stepText) return stepText
+
+  throw new Error('Gemini interaction did not return output text.')
+}
+
+async function getLocalEnvValue(name: string): Promise<string | undefined> {
+  if (process.env.NODE_ENV === 'production') return undefined
+
+  try {
+    const envFile = await readFile(join(process.cwd(), '.env.local'), 'utf8')
+    const line = envFile
+      .split(/\r?\n/)
+      .find(candidate => candidate.trim().startsWith(`${name}=`))
+
+    if (!line) return undefined
+
+    const value = line.slice(line.indexOf('=') + 1).trim()
+    if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+      return value.slice(1, -1)
+    }
+
+    return value
+  } catch {
+    return undefined
+  }
+}
+
+function firstTurnEnvironment() {
+  return {
+    type: 'remote',
+    sources: [
+      {
+        type: 'inline',
+        target: 'bin/get_pricing_guidance.py',
+        content: PRICING_GUIDANCE_SCRIPT,
+      },
+      {
+        type: 'inline',
+        target: 'state/seller_memory.md',
+        content: '# Seller Memory\n\nTrack useful lessons from this active negotiation here.\n',
+      },
+      {
+        type: 'inline',
+        target: '.agents/AGENTS.md',
+        content: 'You are the Haggle Market seller. Maintain useful files, use bash and Python tools, and never reveal internal state.',
+      },
+    ],
+  }
+}
+
+async function createInteraction(input: SellerNegotiationInput): Promise<GeminiInteractionResponse> {
+  const apiKey =
+    await getLocalEnvValue('GEMINI_API_KEY') ||
+    process.env.GEMINI_API_KEY ||
+    process.env.GOOGLE_API_KEY ||
+    process.env.GOOGLE_GENERATIVE_AI_API_KEY
+
+  if (!apiKey) {
+    throw new Error('GEMINI_API_KEY is not configured.')
+  }
+
+  const body: Record<string, unknown> = {
+    agent: input.sellerAgentState?.agent_id || GEMINI_AGENT_ID,
+    input: [{ type: 'text', text: buildPrompt(input) }],
+    system_instruction: await loadSellerInstructions(),
+    environment: input.sellerAgentState?.environment_id || firstTurnEnvironment(),
+  }
+
+  if (input.sellerAgentState?.previous_interaction_id) {
+    body.previous_interaction_id = input.sellerAgentState.previous_interaction_id
+  }
+
+  const response = await fetch(GEMINI_INTERACTIONS_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-goog-api-key': apiKey,
+      'Api-Revision': GEMINI_API_REVISION,
+    },
+    body: JSON.stringify(body),
+  })
+
+  const responseText = await response.text()
+  let data: GeminiInteractionResponse
+  try {
+    data = JSON.parse(responseText) as GeminiInteractionResponse
+  } catch {
+    data = {}
+  }
+
+  if (!response.ok) {
+    const errorMessage =
+      data.error?.message ||
+      (Array.isArray(data) ? data[0]?.error?.message : undefined) ||
+      responseText.slice(0, 500) ||
+      `Gemini interaction failed with HTTP ${response.status}.`
+
+    throw new Error(`Gemini interaction failed with HTTP ${response.status}: ${errorMessage}`)
+  }
+
+  return data
+}
+
 export async function runSellerNegotiation(
   input: SellerNegotiationInput
 ): Promise<SellerNegotiationResult> {
-  const agent = new SandboxAgent({
-    name: 'Haggle Market Seller',
-    model: MODEL,
-    instructions: await loadSellerInstructions(),
-    defaultManifest: buildManifest(input),
-    capabilities: [
-      ...Capabilities.default(),
-      memory(),
-    ],
-  })
+  const interaction = await createInteraction(input)
+  const id = interaction.id
+  const environmentId = interaction.environment_id || input.sellerAgentState?.environment_id
 
-  const result = await run(agent, buildPrompt(input), {
-    maxTurns: 16,
-    sandbox: {
-      client: new UnixLocalSandboxClient(),
+  if (!id) {
+    throw new Error('Gemini interaction response did not include an interaction id.')
+  }
+
+  if (!environmentId) {
+    throw new Error('Gemini interaction response did not include an environment id.')
+  }
+
+  return {
+    ...parseSellerOutput(extractOutputText(interaction).trim()),
+    seller_agent_state: {
+      environment_id: environmentId,
+      previous_interaction_id: id,
+      agent_id: input.sellerAgentState?.agent_id || GEMINI_AGENT_ID,
+      updated_at: new Date().toISOString(),
     },
-  })
-
-  return parseSellerOutput(String(result.finalOutput || '').trim())
+  }
 }

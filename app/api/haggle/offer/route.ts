@@ -2,10 +2,21 @@ import { NextRequest, NextResponse } from 'next/server'
 import sql from '@/lib/db'
 import { HaggleSession, MakeOfferInput, ApiResponse, Product, SellerNegotiationResponse } from '@/lib/types'
 import { getAuthContext, forbidden, unauthorized } from '@/lib/auth-helpers'
-import { runSellerNegotiation, SellerMessageHistoryItem } from '@/assistant/seller-agent'
+import { runSellerNegotiation, SellerAgentState, SellerMessageHistoryItem } from '@/assistant/seller-agent'
 
 export const runtime = 'nodejs'
 export const maxDuration = 300
+
+type SellerResponseWithAgentState = SellerNegotiationResponse & {
+  seller_agent_state?: SellerAgentState | null
+}
+
+type SqlJsonValue = Parameters<typeof sql.json>[0]
+
+function publicSession<T extends HaggleSession>(session: T): HaggleSession {
+  const { seller_agent_state: _sellerAgentState, ...safeSession } = session
+  return safeSession as HaggleSession
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -78,6 +89,7 @@ export async function POST(request: NextRequest) {
       product,
       buyerMessage: message,
       roundCount: newRoundsCount,
+      sellerAgentState: session.seller_agent_state ?? null,
     })
 
     if (!sellerResponse) {
@@ -93,6 +105,7 @@ export async function POST(request: NextRequest) {
     `
 
     let updatedSession: HaggleSession
+    const nextSellerAgentState = sellerResponse.seller_agent_state ?? null
 
     if (sellerResponse.action === 'accept') {
       const acceptedPrice = sellerResponse.counter_offer ?? 0
@@ -114,7 +127,8 @@ export async function POST(request: NextRequest) {
           SET status = 'accepted',
               final_price = ${acceptedPrice},
               ended_at = NOW(),
-              ai_counter_offer = ${acceptedPrice}
+              ai_counter_offer = ${acceptedPrice},
+              seller_agent_state = NULL
           WHERE id = ${session_id}
         `,
         tx`
@@ -143,12 +157,14 @@ export async function POST(request: NextRequest) {
         final_price: acceptedPrice,
         ended_at: new Date().toISOString(),
         ai_counter_offer: acceptedPrice,
+        seller_agent_state: null,
       }
     } else if (sellerResponse.action === 'reject' || newRoundsCount >= Number(session.max_rounds)) {
       const result = await sql`
         UPDATE haggle_sessions
         SET status = ${newRoundsCount >= Number(session.max_rounds) ? 'expired' : 'rejected'},
-            ended_at = NOW()
+            ended_at = NOW(),
+            seller_agent_state = NULL
         WHERE id = ${session_id}
         RETURNING *
       `
@@ -156,7 +172,8 @@ export async function POST(request: NextRequest) {
     } else {
       const result = await sql`
         UPDATE haggle_sessions
-        SET ai_counter_offer = ${sellerResponse.counter_offer ?? null}
+        SET ai_counter_offer = ${sellerResponse.counter_offer ?? null},
+            seller_agent_state = ${nextSellerAgentState ? sql.json(nextSellerAgentState as unknown as SqlJsonValue) : null}
         WHERE id = ${session_id}
         RETURNING *
       `
@@ -170,8 +187,12 @@ export async function POST(request: NextRequest) {
     }>>({
       success: true,
       data: {
-        session: updatedSession,
-        seller_response: sellerResponse,
+        session: publicSession(updatedSession),
+        seller_response: {
+          action: sellerResponse.action,
+          counter_offer: sellerResponse.counter_offer,
+          message: sellerResponse.message,
+        },
         product
       }
     })
@@ -190,13 +211,15 @@ async function getSellerNegotiationResponse({
   product,
   buyerMessage,
   roundCount,
+  sellerAgentState,
 }: {
   sessionId: string
   playerId: string
   product: Product
   buyerMessage: string
   roundCount: number
-}): Promise<SellerNegotiationResponse | null> {
+  sellerAgentState?: SellerAgentState | null
+}): Promise<SellerResponseWithAgentState | null> {
   try {
     const history = await sql<SellerMessageHistoryItem[]>`
       SELECT sender, message, offer_amount, created_at
@@ -212,12 +235,14 @@ async function getSellerNegotiationResponse({
       buyerMessage,
       roundCount,
       history,
+      sellerAgentState,
     })
 
     return {
       action: data.action,
       counter_offer: data.counter_offer,
       message: data.message,
+      seller_agent_state: data.seller_agent_state,
     }
   } catch (error) {
     console.error('Seller agent failed:', error)

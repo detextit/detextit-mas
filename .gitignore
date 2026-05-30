@@ -8,3 +8,5 @@ dist
 assistant/.openai/
 assistant/.claude/
 .playwright-cli/
+output/
+scripts/

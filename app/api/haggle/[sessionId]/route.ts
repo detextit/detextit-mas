@@ -4,6 +4,11 @@ import { ApiResponse, HaggleSession, HaggleMessage, Product } from '@/lib/types'
 import { getAuthContext, forbidden, unauthorized } from '@/lib/auth-helpers'
 
 // GET /api/haggle/[sessionId] - Get session details with messages
+function publicSession<T extends HaggleSession>(session: T): HaggleSession {
+  const { seller_agent_state: _sellerAgentState, ...safeSession } = session
+  return safeSession as HaggleSession
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ sessionId: string }> }
@@ -52,7 +57,7 @@ export async function GET(
     }>>({
       success: true,
       data: {
-        session,
+        session: publicSession(session),
         product,
         messages: [...messages] as HaggleMessage[]
       }

@@ -1,8 +1,9 @@
 "use client"
 
 import Link from "next/link"
+import Image from "next/image"
 import { Show, UserButton } from "@clerk/nextjs"
-import { Menu, Store } from "lucide-react"
+import { Menu } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { CreditDisplay } from "@/components/credit-display"
 import { ThemeToggle } from "@/components/theme-toggle"
@@ -35,8 +36,15 @@ export function SiteHeader({ sidebarOpen = false, onToggleSidebar }: SiteHeaderP
             )}
 
             <Link href="/" className="flex items-center gap-2">
-              <div className="flex size-8 items-center justify-center rounded-md bg-primary text-primary-foreground">
-                <Store className="size-4" aria-hidden="true" />
+              <div className="relative size-8 overflow-hidden rounded-md border border-white/10 bg-black">
+                <Image
+                  src="/detextit-icon.png"
+                  alt=""
+                  fill
+                  sizes="32px"
+                  className="object-cover"
+                  priority
+                />
               </div>
               <span className="text-xl font-bold tracking-tight">Haggle</span>
             </Link>

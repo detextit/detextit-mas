@@ -3,6 +3,11 @@ import sql from '@/lib/db'
 import { ApiResponse, HaggleSession } from '@/lib/types'
 import { getAuthContext, forbidden, unauthorized } from '@/lib/auth-helpers'
 
+function publicSession<T extends HaggleSession>(session: T): HaggleSession {
+  const { seller_agent_state: _sellerAgentState, ...safeSession } = session
+  return safeSession as HaggleSession
+}
+
 export async function POST(request: NextRequest) {
   try {
     const auth = await getAuthContext(request)
@@ -74,7 +79,8 @@ export async function POST(request: NextRequest) {
         UPDATE haggle_sessions
         SET status = 'accepted',
             final_price = ${acceptedPrice},
-            ended_at = NOW()
+            ended_at = NOW(),
+            seller_agent_state = NULL
         WHERE id = ${session_id}
       `,
       tx`
@@ -106,6 +112,7 @@ export async function POST(request: NextRequest) {
       status: 'accepted',
       final_price: acceptedPrice,
       ended_at: new Date().toISOString(),
+      seller_agent_state: null,
     }
 
     return NextResponse.json<ApiResponse<{
@@ -115,7 +122,7 @@ export async function POST(request: NextRequest) {
     }>>({
       success: true,
       data: {
-        session: updatedSession,
+        session: publicSession(updatedSession),
         new_credits: newCredits,
         savings: Number(product.market_price) - acceptedPrice
       }

@@ -9,6 +9,10 @@ import { ThemeProvider } from "@/components/theme-provider"
 export const metadata: Metadata = {
   title: "Haggle - Negotiation Game",
   description: "A competitive marketplace where humans and AI agents negotiate with sellers. Climb the leaderboard by getting the best deals.",
+  icons: {
+    icon: "/detextit-icon.png",
+    apple: "/apple-touch-icon.png",
+  },
 }
 
 export default function RootLayout({
