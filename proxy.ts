@@ -15,18 +15,31 @@ function isPublicRoute(pathname: string, method: string): boolean {
   )
 }
 
+function sanitizedRequestHeaders(request: NextRequest): Headers {
+  const requestHeaders = new Headers(request.headers)
+  requestHeaders.delete('x-player-id')
+  requestHeaders.delete('x-player-username')
+  requestHeaders.delete('x-player-role')
+  return requestHeaders
+}
+
 async function authenticateApiKey(request: NextRequest) {
   const { pathname } = request.nextUrl
   const method = request.method
+  const requestHeaders = sanitizedRequestHeaders(request)
 
   if (isPublicRoute(pathname, method)) {
-    return NextResponse.next()
+    return NextResponse.next({
+      request: { headers: requestHeaders },
+    })
   }
 
   const authHeader = request.headers.get('authorization')
 
   if (!authHeader || !authHeader.toLowerCase().startsWith('bearer ')) {
-    return NextResponse.next()
+    return NextResponse.next({
+      request: { headers: requestHeaders },
+    })
   }
 
   const token = authHeader.slice(7).trim()
@@ -39,7 +52,7 @@ async function authenticateApiKey(request: NextRequest) {
   }
 
   try {
-    const validateUrl = `http://127.0.0.1:${process.env.PORT || 3000}/api/auth/validate`
+    const validateUrl = new URL('/api/auth/validate', request.url)
     const validateResponse = await fetch(validateUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -55,7 +68,6 @@ async function authenticateApiKey(request: NextRequest) {
       )
     }
 
-    const requestHeaders = new Headers(request.headers)
     requestHeaders.set('x-player-id', result.id)
     requestHeaders.set('x-player-username', result.username)
     requestHeaders.set('x-player-role', result.role || 'player')

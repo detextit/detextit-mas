@@ -4,6 +4,11 @@ import { ApiResponse, HaggleSession } from '@/lib/types'
 import { getAuthContext, forbidden, unauthorized } from '@/lib/auth-helpers'
 
 // POST /api/haggle/abandon - Abandon a haggle session
+function publicSession<T extends HaggleSession>(session: T): HaggleSession {
+  const { seller_agent_state: _sellerAgentState, ...safeSession } = session
+  return safeSession as HaggleSession
+}
+
 export async function POST(request: NextRequest) {
   try {
     const auth = await getAuthContext(request)
@@ -48,7 +53,8 @@ export async function POST(request: NextRequest) {
     const updatedSession = await sql`
       UPDATE haggle_sessions 
       SET status = 'abandoned', 
-          ended_at = NOW()
+          ended_at = NOW(),
+          seller_agent_state = NULL
       WHERE id = ${session_id}
       RETURNING *
     `
@@ -60,7 +66,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json<ApiResponse<HaggleSession>>({
       success: true,
-      data: updatedSession[0] as HaggleSession
+      data: publicSession(updatedSession[0] as HaggleSession)
     })
   } catch (error) {
     console.error('Error abandoning session:', error)

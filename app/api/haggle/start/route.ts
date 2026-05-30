@@ -3,6 +3,11 @@ import sql from '@/lib/db'
 import { HaggleSession, ApiResponse, Product } from '@/lib/types'
 import { getAuthContext } from '@/lib/auth-helpers'
 
+function publicSession<T extends HaggleSession>(session: T): HaggleSession {
+  const { seller_agent_state: _sellerAgentState, ...safeSession } = session
+  return safeSession as HaggleSession
+}
+
 export async function POST(request: NextRequest) {
   try {
     const auth = await getAuthContext(request)
@@ -68,7 +73,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json<ApiResponse<HaggleSession & { product: Product }>>({
         success: true,
         data: {
-          ...(existingSession[0] as HaggleSession),
+          ...publicSession(existingSession[0] as HaggleSession),
           product: product[0] as Product
         }
       })
@@ -85,7 +90,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json<ApiResponse<HaggleSession & { product: Product }>>({
       success: true,
       data: {
-        ...(session[0] as HaggleSession),
+        ...publicSession(session[0] as HaggleSession),
         product: productData,
       }
     }, { status: 201 })

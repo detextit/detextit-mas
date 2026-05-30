@@ -50,6 +50,12 @@ export interface HaggleSession {
   started_at: string
   ended_at: string | null
   final_price: number | null
+  seller_agent_state?: {
+    environment_id: string
+    previous_interaction_id: string
+    agent_id?: string
+    updated_at?: string
+  } | null
 }
 
 export interface HaggleSessionWithProduct extends HaggleSession {
