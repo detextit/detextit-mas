@@ -1,8 +1,1 @@
-.venv
-.env
-# transcripts/
-.claude/memory/transcripts/
-
-seller_session.json
-
-*__pycache__*
+__pycache__
