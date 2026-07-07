@@ -33,65 +33,56 @@ export async function GET(
   }
 }
 
-// PATCH /api/products/[id] - Update product (admin only)
+// PATCH /api/products/[id] - Update product (admin/service only)
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const auth = await requireRole(request, ['admin'])
+    const auth = await requireRole(request, ['admin', 'service'])
     if (isAuthResponse(auth)) return auth
 
     const { id } = await params
     const body = await request.json()
     const { stock_quantity, market_price, min_acceptable_price } = body
 
-    // Build update query dynamically based on provided fields
-    const updates: string[] = []
-    const values: (string | number)[] = []
+    const stockQuantity = stock_quantity === undefined ? null : Number(stock_quantity)
+    const marketPrice = market_price === undefined ? null : Number(market_price)
+    const minAcceptablePrice = min_acceptable_price === undefined ? null : Number(min_acceptable_price)
 
-    if (stock_quantity !== undefined) {
-      updates.push('stock_quantity')
-      values.push(stock_quantity)
-    }
-    if (market_price !== undefined) {
-      updates.push('market_price')
-      values.push(market_price)
-    }
-    if (min_acceptable_price !== undefined) {
-      updates.push('min_acceptable_price')
-      values.push(min_acceptable_price)
-    }
-
-    if (updates.length === 0) {
+    if (stockQuantity === null && marketPrice === null && minAcceptablePrice === null) {
       return NextResponse.json<ApiResponse<null>>({
         success: false,
         error: 'No fields to update'
       }, { status: 400 })
     }
 
-    // For simplicity, handle common update case
-    let result
-    if (stock_quantity !== undefined) {
-      result = await sql`
-        UPDATE products 
-        SET stock_quantity = ${stock_quantity}, updated_at = NOW()
-        WHERE id = ${id}
-        RETURNING *
-      `
-    } else {
-      result = await sql`
-        UPDATE products 
-        SET updated_at = NOW()
-        WHERE id = ${id}
-        RETURNING *
-      `
+    if (
+      (stockQuantity !== null && (!Number.isInteger(stockQuantity) || stockQuantity < 0)) ||
+      (marketPrice !== null && (!Number.isFinite(marketPrice) || marketPrice <= 0)) ||
+      (minAcceptablePrice !== null && (!Number.isFinite(minAcceptablePrice) || minAcceptablePrice <= 0))
+    ) {
+      return NextResponse.json<ApiResponse<null>>({
+        success: false,
+        error: 'Invalid product update values'
+      }, { status: 400 })
     }
+
+    const result = await sql`
+      UPDATE products 
+      SET stock_quantity = COALESCE(${stockQuantity}, stock_quantity),
+          market_price = COALESCE(${marketPrice}, market_price),
+          min_acceptable_price = COALESCE(${minAcceptablePrice}, min_acceptable_price),
+          updated_at = NOW()
+      WHERE id = ${id}
+        AND COALESCE(${minAcceptablePrice}, min_acceptable_price) < COALESCE(${marketPrice}, market_price)
+      RETURNING *
+    `
 
     if (result.length === 0) {
       return NextResponse.json<ApiResponse<null>>({
         success: false,
-        error: 'Product not found'
+        error: 'Product not found or invalid price bounds'
       }, { status: 404 })
     }
 

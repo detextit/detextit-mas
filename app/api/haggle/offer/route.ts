@@ -2,13 +2,14 @@ import { NextRequest, NextResponse } from 'next/server'
 import sql from '@/lib/db'
 import { HaggleSession, MakeOfferInput, ApiResponse, Product, SellerNegotiationResponse } from '@/lib/types'
 import { getAuthContext, forbidden, unauthorized } from '@/lib/auth-helpers'
-import { runSellerNegotiation, SellerAgentState, SellerMessageHistoryItem } from '@/assistant/seller-agent'
+import { runSellerNegotiation, SellerAgentState, SellerInventoryUpdate, SellerMessageHistoryItem } from '@/assistant/seller-agent'
 
 export const runtime = 'nodejs'
 export const maxDuration = 300
 
 type SellerResponseWithAgentState = SellerNegotiationResponse & {
   seller_agent_state?: SellerAgentState | null
+  inventory_update?: SellerInventoryUpdate
 }
 
 type SqlJsonValue = Parameters<typeof sql.json>[0]
@@ -105,6 +106,7 @@ export async function POST(request: NextRequest) {
     `
 
     let updatedSession: HaggleSession
+    let responseProduct = product
     const nextSellerAgentState = sellerResponse.seller_agent_state ?? null
 
     if (sellerResponse.action === 'accept') {
@@ -180,6 +182,11 @@ export async function POST(request: NextRequest) {
       updatedSession = result[0] as HaggleSession
     }
 
+    const inventoryUpdatedProduct = await applySellerInventoryUpdate(sellerResponse.inventory_update, product)
+    if (inventoryUpdatedProduct) {
+      responseProduct = inventoryUpdatedProduct
+    }
+
     return NextResponse.json<ApiResponse<{
       session: HaggleSession
       seller_response: SellerNegotiationResponse
@@ -193,7 +200,7 @@ export async function POST(request: NextRequest) {
           counter_offer: sellerResponse.counter_offer,
           message: sellerResponse.message,
         },
-        product
+        product: responseProduct
       }
     })
   } catch (error) {
@@ -221,17 +228,25 @@ async function getSellerNegotiationResponse({
   sellerAgentState?: SellerAgentState | null
 }): Promise<SellerResponseWithAgentState | null> {
   try {
-    const history = await sql<SellerMessageHistoryItem[]>`
-      SELECT sender, message, offer_amount, created_at
-      FROM haggle_messages
-      WHERE session_id = ${sessionId}
-      ORDER BY created_at ASC
-    `
+    const [history, catalog] = await Promise.all([
+      sql<SellerMessageHistoryItem[]>`
+        SELECT sender, message, offer_amount, created_at
+        FROM haggle_messages
+        WHERE session_id = ${sessionId}
+        ORDER BY created_at ASC
+      `,
+      sql<Product[]>`
+        SELECT *
+        FROM products
+        ORDER BY name ASC
+      `,
+    ])
 
     const data = await runSellerNegotiation({
       sessionId,
       playerId,
       product,
+      catalog,
       buyerMessage,
       roundCount,
       history,
@@ -243,10 +258,84 @@ async function getSellerNegotiationResponse({
       counter_offer: data.counter_offer,
       message: data.message,
       seller_agent_state: data.seller_agent_state,
+      inventory_update: data.inventory_update,
     }
   } catch (error) {
     console.error('Seller agent failed:', error)
   }
 
   return null
+}
+
+function boundedNumber(value: number | undefined): number | null {
+  if (value === undefined || value === null || !Number.isFinite(value)) return null
+  return Math.round(value * 100) / 100
+}
+
+function sameProduct(update: SellerInventoryUpdate, product: Product): boolean {
+  if (update.product_id && update.product_id === product.id) return true
+  if (update.product_name && update.product_name.toLowerCase() === product.name.toLowerCase()) return true
+  return !update.product_id && !update.product_name
+}
+
+async function applySellerInventoryUpdate(
+  update: SellerInventoryUpdate | undefined,
+  product: Product
+): Promise<Product | null> {
+  if (!update || process.env.SELLER_AGENT_INVENTORY_UPDATES === 'false') return null
+  if (!sameProduct(update, product)) return null
+
+  if (update.type === 'promotion_note') {
+    console.info('Seller promotion note:', {
+      product_id: product.id,
+      note: update.note,
+      reason: update.reason,
+    })
+    return null
+  }
+
+  if (update.type === 'stock_adjustment') {
+    const requestedStockQuantity = update.stock_quantity
+    if (
+      typeof requestedStockQuantity !== 'number' ||
+      !Number.isInteger(requestedStockQuantity) ||
+      requestedStockQuantity < 0
+    ) return null
+
+    const currentStock = Number(product.stock_quantity)
+    const maxDelta = Math.max(5, Math.ceil(currentStock * 0.25))
+    if (Math.abs(requestedStockQuantity - currentStock) > maxDelta) return null
+
+    const result = await sql`
+      UPDATE products
+      SET stock_quantity = ${requestedStockQuantity},
+          updated_at = NOW()
+      WHERE id = ${product.id}
+      RETURNING *
+    `
+    return (result[0] as Product) || null
+  }
+
+  const currentMarket = Number(product.market_price)
+  const currentFloor = Number(product.min_acceptable_price)
+  const marketPrice = boundedNumber(update.market_price) ?? currentMarket
+  const minAcceptablePrice = boundedNumber(update.min_acceptable_price) ?? currentFloor
+  const maxPriceMove = currentMarket * 0.10
+
+  if (marketPrice <= 0 || minAcceptablePrice <= 0) return null
+  if (Math.abs(marketPrice - currentMarket) > maxPriceMove) return null
+  if (minAcceptablePrice >= marketPrice) return null
+  if (minAcceptablePrice < marketPrice * 0.45) return null
+  if (minAcceptablePrice > marketPrice * 0.95) return null
+
+  const result = await sql`
+    UPDATE products
+    SET market_price = ${marketPrice},
+        min_acceptable_price = ${minAcceptablePrice},
+        updated_at = NOW()
+    WHERE id = ${product.id}
+    RETURNING *
+  `
+
+  return (result[0] as Product) || null
 }

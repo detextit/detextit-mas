@@ -55,6 +55,9 @@ export interface HaggleSession {
     previous_interaction_id: string
     agent_id?: string
     updated_at?: string
+    last_heartbeat_at?: string
+    heartbeat_count?: number
+    skill_bundle_version?: string
   } | null
 }
 
